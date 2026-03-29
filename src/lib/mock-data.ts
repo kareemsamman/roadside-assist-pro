@@ -8,13 +8,13 @@ import type {
   ParkingBay,
 } from "@/types/cad";
 
-// Generate a curved road polyline
-function generateRoadPolyline(offset: number = 0): Point2D[] {
+// Generate a straight road polyline parallel to centerline
+function generateRoadPolyline(yOffset: number = 0): Point2D[] {
   const points: Point2D[] = [];
-  for (let i = 0; i <= 40; i++) {
-    const t = i / 40;
-    const x = 50 + t * 300;
-    const y = 200 + Math.sin(t * Math.PI * 1.2) * 60 + offset;
+  const numPoints = 11;
+  for (let i = 0; i <= numPoints; i++) {
+    const x = (i / numPoints) * 100;
+    const y = yOffset;
     points.push({ x, y });
   }
   return points;
@@ -35,20 +35,20 @@ export const MOCK_UPLOAD: UploadResponse = {
     { name: "TEXT_LABELS", color: 7, visible: true, entityCount: 8 },
     { name: "BLOCKS", color: 2, visible: true, entityCount: 5 },
   ],
-  bounds: { min: { x: 0, y: 0 }, max: { x: 400, y: 400 } },
+  bounds: { min: { x: -5, y: -35 }, max: { x: 105, y: 35 } },
   polylines: [
     { id: "pl-center", points: generateRoadPolyline(0), layer: "ROAD_CENTERLINE", closed: false, color: 1 },
-    { id: "pl-left", points: generateRoadPolyline(-25), layer: "ROAD_EDGE_LEFT", closed: false, color: 3 },
-    { id: "pl-right", points: generateRoadPolyline(25), layer: "ROAD_EDGE_RIGHT", closed: false, color: 3 },
-    { id: "pl-curb-l", points: generateRoadPolyline(-28), layer: "CURB", closed: false, color: 8 },
-    { id: "pl-curb-r", points: generateRoadPolyline(28), layer: "CURB", closed: false, color: 8 },
-    // A barrier polyline
+    { id: "pl-left", points: generateRoadPolyline(-3.5), layer: "ROAD_EDGE_LEFT", closed: false, color: 3 },
+    { id: "pl-right", points: generateRoadPolyline(3.5), layer: "ROAD_EDGE_RIGHT", closed: false, color: 3 },
+    { id: "pl-curb-l", points: generateRoadPolyline(-4.0), layer: "CURB", closed: false, color: 8 },
+    { id: "pl-curb-r", points: generateRoadPolyline(4.0), layer: "CURB", closed: false, color: 8 },
+    // A barrier polyline across part of the road
     {
       id: "pl-barrier",
       points: [
-        { x: 180, y: 170 },
-        { x: 200, y: 168 },
-        { x: 220, y: 170 },
+        { x: 55, y: 5 },
+        { x: 60, y: 5 },
+        { x: 65, y: 5 },
       ],
       layer: "BARRIERS",
       closed: false,
@@ -56,12 +56,12 @@ export const MOCK_UPLOAD: UploadResponse = {
     },
   ],
   blocks: [
-    { id: "blk-1", name: "SIGN_POST", insertionPoint: { x: 100, y: 150 }, rotation: 0, scale: 1, layer: "BLOCKS", attributes: {} },
-    { id: "blk-2", name: "LAMPPOST", insertionPoint: { x: 250, y: 155 }, rotation: 0, scale: 1, layer: "BLOCKS", attributes: {} },
+    { id: "blk-1", name: "SIGN_POST", insertionPoint: { x: 20, y: -5 }, rotation: 0, scale: 1, layer: "BLOCKS", attributes: {} },
+    { id: "blk-2", name: "LAMPPOST", insertionPoint: { x: 80, y: -5 }, rotation: 0, scale: 1, layer: "BLOCKS", attributes: {} },
   ],
   texts: [
-    { id: "txt-1", content: "A1 Highway", position: { x: 180, y: 100 }, height: 8, rotation: 0, layer: "TEXT_LABELS" },
-    { id: "txt-2", content: "KM 12+500", position: { x: 300, y: 100 }, height: 6, rotation: 0, layer: "TEXT_LABELS" },
+    { id: "txt-1", content: "A1 Highway", position: { x: 50, y: -8 }, height: 2, rotation: 0, layer: "TEXT_LABELS" },
+    { id: "txt-2", content: "KM 12+500", position: { x: 90, y: -8 }, height: 1.5, rotation: 0, layer: "TEXT_LABELS" },
   ],
 };
 
@@ -81,7 +81,7 @@ export const MOCK_ROAD_ANALYSIS: AnalyzeRoadResponse = {
 export function generateMockParkingBays(rules: ParkingRules): GenerateParkingResponse {
   const bays: ParkingBay[] = [];
   const edgePoints = MOCK_UPLOAD.polylines[2].points; // right edge
-  const totalLength = 300; // approx road length
+  const totalLength = 100; // straight road length 0→100
 
   let station = rules.spacing / 2;
   let num = rules.startingNumber;
