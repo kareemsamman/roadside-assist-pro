@@ -10,12 +10,11 @@ import { Loader2, Sparkles } from "lucide-react";
 import { useWorkflow } from "@/context/WorkflowContext";
 import { generateParking } from "@/lib/api-client";
 import type { ParkingRules } from "@/types/cad";
-import { DEFAULT_PARKING_RULES } from "@/types/cad";
 
 const PRESETS: { label: string; width: number; length: number }[] = [
-  { label: "2.0 × 6.0 m", width: 2.0, length: 6.0 },
-  { label: "2.5 × 7.5 m", width: 2.5, length: 7.5 },
-  { label: "3.0 × 8.0 m", width: 3.0, length: 8.0 },
+  { label: "2.0 x 6.0 m", width: 2.0, length: 6.0 },
+  { label: "2.5 x 7.5 m", width: 2.5, length: 7.5 },
+  { label: "3.0 x 8.0 m", width: 3.0, length: 8.0 },
 ];
 
 export function ConfigureStep() {
@@ -32,10 +31,8 @@ export function ConfigureStep() {
   const handleAiParse = async () => {
     if (!aiPrompt.trim()) return;
     setAiLoading(true);
-    // Simulate AI parsing (would call edge function)
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 500));
 
-    // Simple rule extraction from text
     const text = aiPrompt.toLowerCase();
     const widthMatch = text.match(/(\d+\.?\d*)\s*(?:by|x|×)\s*(\d+\.?\d*)/);
     const spacingMatch = text.match(/every\s+(\d+\.?\d*)/);
@@ -51,18 +48,21 @@ export function ConfigureStep() {
   };
 
   const handleGenerate = async () => {
-    if (!state.uploadData || !state.selectedEdgeId) return;
+    if (!state.fileId) return;
     setGenerating(true);
     dispatch({ type: "SET_PARKING_RULES", rules });
     dispatch({ type: "SET_LOADING", loading: true });
 
     try {
-      const result = await generateParking(state.uploadData.fileId, state.selectedEdgeId, rules);
-      dispatch({ type: "SET_GENERATED_BAYS", bays: result.bays });
+      const result = await generateParking(state.fileId, rules);
+      dispatch({ type: "SET_JOB", jobId: result.jobId });
       dispatch({ type: "SET_LOADING", loading: false });
-      goToStep("preview");
+      goToStep("export");
     } catch (err) {
-      dispatch({ type: "SET_ERROR", error: err instanceof Error ? err.message : "Generation failed" });
+      dispatch({
+        type: "SET_ERROR",
+        error: err instanceof Error ? err.message : "Generation failed",
+      });
     }
     setGenerating(false);
   };
@@ -77,7 +77,6 @@ export function ConfigureStep() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Rules Form */}
         <div className="space-y-4">
           <Card>
             <CardHeader>
@@ -88,7 +87,11 @@ export function ConfigureStep() {
                 {PRESETS.map((p) => (
                   <Button
                     key={p.label}
-                    variant={rules.bayWidth === p.width && rules.bayLength === p.length ? "default" : "outline"}
+                    variant={
+                      rules.bayWidth === p.width && rules.bayLength === p.length
+                        ? "default"
+                        : "outline"
+                    }
                     size="sm"
                     onClick={() => update({ bayWidth: p.width, bayLength: p.length })}
                   >
@@ -106,30 +109,73 @@ export function ConfigureStep() {
             <CardContent className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="bayWidth">Width (m)</Label>
-                <Input id="bayWidth" type="number" step="0.1" value={rules.bayWidth} onChange={(e) => update({ bayWidth: parseFloat(e.target.value) || 0 })} className="font-mono" />
+                <Input
+                  id="bayWidth"
+                  type="number"
+                  step="0.1"
+                  value={rules.bayWidth}
+                  onChange={(e) => update({ bayWidth: parseFloat(e.target.value) || 0 })}
+                  className="font-mono"
+                />
               </div>
               <div>
                 <Label htmlFor="bayLength">Length (m)</Label>
-                <Input id="bayLength" type="number" step="0.1" value={rules.bayLength} onChange={(e) => update({ bayLength: parseFloat(e.target.value) || 0 })} className="font-mono" />
+                <Input
+                  id="bayLength"
+                  type="number"
+                  step="0.1"
+                  value={rules.bayLength}
+                  onChange={(e) => update({ bayLength: parseFloat(e.target.value) || 0 })}
+                  className="font-mono"
+                />
               </div>
               <div>
                 <Label htmlFor="spacing">Spacing (m)</Label>
-                <Input id="spacing" type="number" step="1" value={rules.spacing} onChange={(e) => update({ spacing: parseFloat(e.target.value) || 0 })} className="font-mono" />
+                <Input
+                  id="spacing"
+                  type="number"
+                  step="1"
+                  value={rules.spacing}
+                  onChange={(e) => update({ spacing: parseFloat(e.target.value) || 0 })}
+                  className="font-mono"
+                />
               </div>
               <div>
                 <Label htmlFor="offset">Lateral Offset (m)</Label>
-                <Input id="offset" type="number" step="0.1" value={rules.lateralOffset} onChange={(e) => update({ lateralOffset: parseFloat(e.target.value) || 0 })} className="font-mono" />
+                <Input
+                  id="offset"
+                  type="number"
+                  step="0.1"
+                  value={rules.lateralOffset}
+                  onChange={(e) =>
+                    update({ lateralOffset: parseFloat(e.target.value) || 0 })
+                  }
+                  className="font-mono"
+                />
               </div>
               <div>
                 <Label htmlFor="clearance">Min Clearance (m)</Label>
-                <Input id="clearance" type="number" step="0.1" value={rules.minClearance} onChange={(e) => update({ minClearance: parseFloat(e.target.value) || 0 })} className="font-mono" />
+                <Input
+                  id="clearance"
+                  type="number"
+                  step="0.1"
+                  value={rules.minClearance}
+                  onChange={(e) =>
+                    update({ minClearance: parseFloat(e.target.value) || 0 })
+                  }
+                  className="font-mono"
+                />
               </div>
               <div>
                 <Label htmlFor="orientation">Orientation</Label>
                 <select
                   id="orientation"
                   value={rules.orientation}
-                  onChange={(e) => update({ orientation: e.target.value as ParkingRules["orientation"] })}
+                  onChange={(e) =>
+                    update({
+                      orientation: e.target.value as ParkingRules["orientation"],
+                    })
+                  }
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
                 >
                   <option value="parallel">Parallel</option>
@@ -147,11 +193,24 @@ export function ConfigureStep() {
             <CardContent className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="prefix">Prefix</Label>
-                <Input id="prefix" value={rules.numberPrefix} onChange={(e) => update({ numberPrefix: e.target.value })} className="font-mono" />
+                <Input
+                  id="prefix"
+                  value={rules.numberPrefix}
+                  onChange={(e) => update({ numberPrefix: e.target.value })}
+                  className="font-mono"
+                />
               </div>
               <div>
                 <Label htmlFor="startNum">Starting Number</Label>
-                <Input id="startNum" type="number" value={rules.startingNumber} onChange={(e) => update({ startingNumber: parseInt(e.target.value) || 1 })} className="font-mono" />
+                <Input
+                  id="startNum"
+                  type="number"
+                  value={rules.startingNumber}
+                  onChange={(e) =>
+                    update({ startingNumber: parseInt(e.target.value) || 1 })
+                  }
+                  className="font-mono"
+                />
               </div>
             </CardContent>
           </Card>
@@ -163,17 +222,24 @@ export function ConfigureStep() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="insertPole">Insert pole block</Label>
-                <Switch id="insertPole" checked={rules.insertPole} onCheckedChange={(c) => update({ insertPole: c })} />
+                <Switch
+                  id="insertPole"
+                  checked={rules.insertPole}
+                  onCheckedChange={(c) => update({ insertPole: c })}
+                />
               </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="insertSign">Insert sign block</Label>
-                <Switch id="insertSign" checked={rules.insertSign} onCheckedChange={(c) => update({ insertSign: c })} />
+                <Switch
+                  id="insertSign"
+                  checked={rules.insertSign}
+                  onCheckedChange={(c) => update({ insertSign: c })}
+                />
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* AI Input + Summary */}
         <div className="space-y-4">
           <Card>
             <CardHeader>
@@ -189,15 +255,24 @@ export function ConfigureStep() {
                 onChange={(e) => setAiPrompt(e.target.value)}
                 rows={3}
               />
-              <Button onClick={handleAiParse} disabled={aiLoading || !aiPrompt.trim()} className="w-full">
+              <Button
+                onClick={handleAiParse}
+                disabled={aiLoading || !aiPrompt.trim()}
+                className="w-full"
+              >
                 {aiLoading ? (
-                  <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Parsing…</>
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Parsing...
+                  </>
                 ) : (
-                  <><Sparkles className="h-4 w-4 mr-2" /> Parse Rules</>
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" /> Parse Rules
+                  </>
                 )}
               </Button>
               <p className="text-xs text-muted-foreground">
-                AI interprets your instruction and fills the form. All parameters remain editable.
+                AI interprets your instruction and fills the form. All parameters remain
+                editable.
               </p>
             </CardContent>
           </Card>
@@ -210,7 +285,9 @@ export function ConfigureStep() {
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Bay Size</dt>
-                  <dd className="font-mono">{rules.bayWidth} × {rules.bayLength} m</dd>
+                  <dd className="font-mono">
+                    {rules.bayWidth} x {rules.bayLength} m
+                  </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Spacing</dt>
@@ -234,14 +311,28 @@ export function ConfigureStep() {
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Numbering</dt>
-                  <dd className="font-mono">{rules.numberPrefix}{rules.startingNumber}, {rules.numberPrefix}{rules.startingNumber + 1}, …</dd>
+                  <dd className="font-mono">
+                    {rules.numberPrefix}
+                    {rules.startingNumber}, {rules.numberPrefix}
+                    {rules.startingNumber + 1}, ...
+                  </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Blocks</dt>
                   <dd className="flex gap-1">
-                    {rules.insertPole && <Badge variant="secondary" className="text-xs">Pole</Badge>}
-                    {rules.insertSign && <Badge variant="secondary" className="text-xs">Sign</Badge>}
-                    {!rules.insertPole && !rules.insertSign && <span className="text-muted-foreground">None</span>}
+                    {rules.insertPole && (
+                      <Badge variant="secondary" className="text-xs">
+                        Pole
+                      </Badge>
+                    )}
+                    {rules.insertSign && (
+                      <Badge variant="secondary" className="text-xs">
+                        Sign
+                      </Badge>
+                    )}
+                    {!rules.insertPole && !rules.insertSign && (
+                      <span className="text-muted-foreground">None</span>
+                    )}
                   </dd>
                 </div>
               </dl>
@@ -249,12 +340,16 @@ export function ConfigureStep() {
           </Card>
 
           <div className="flex justify-between">
-            <Button variant="outline" onClick={() => goToStep("analyze")}>Back</Button>
+            <Button variant="outline" onClick={() => goToStep("upload")}>
+              Back
+            </Button>
             <Button onClick={handleGenerate} disabled={generating}>
               {generating ? (
-                <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Generating…</>
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" /> Submitting...
+                </>
               ) : (
-                "Generate Parking Bays"
+                "Generate Accessible Parking"
               )}
             </Button>
           </div>

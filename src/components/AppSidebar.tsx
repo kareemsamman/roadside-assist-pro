@@ -1,4 +1,4 @@
-import { Upload, Search, Settings, Eye, Download, ChevronRight } from "lucide-react";
+import { Upload, Settings, Download, ChevronRight } from "lucide-react";
 import { useWorkflow } from "@/context/WorkflowContext";
 import type { WorkflowStep } from "@/types/cad";
 import {
@@ -15,11 +15,9 @@ import {
 import { cn } from "@/lib/utils";
 
 const STEPS: { step: WorkflowStep; label: string; icon: typeof Upload }[] = [
-  { step: "upload", label: "Upload CAD File", icon: Upload },
-  { step: "analyze", label: "Road Analysis", icon: Search },
+  { step: "upload", label: "Upload DWG", icon: Upload },
   { step: "configure", label: "Parking Rules", icon: Settings },
-  { step: "preview", label: "Preview & Clash", icon: Eye },
-  { step: "export", label: "Export DWG", icon: Download },
+  { step: "export", label: "Generate & Download", icon: Download },
 ];
 
 export function AppSidebar() {
@@ -64,7 +62,7 @@ export function AppSidebar() {
                             !isActive && !isComplete && "bg-sidebar-accent text-sidebar-foreground"
                           )}
                         >
-                          {isComplete ? "✓" : idx + 1}
+                          {isComplete ? "\u2713" : idx + 1}
                         </div>
                         {!collapsed && <span>{item.label}</span>}
                       </div>
@@ -85,13 +83,14 @@ export function AppSidebar() {
               <div className="px-3 py-2">
                 <div className="rounded-md bg-sidebar-accent p-3 text-xs text-sidebar-foreground/70">
                   <p className="font-medium text-sidebar-foreground mb-1">
-                    {state.uploadData ? "File Loaded" : "No File"}
+                    {state.fileId ? "File Loaded" : "No File"}
                   </p>
-                  {state.uploadData && (
+                  {state.fileId && (
                     <>
-                      <p className="truncate">{state.uploadData.filename}</p>
-                      <p>{(state.uploadData.fileSize / 1e6).toFixed(1)} MB</p>
-                      <p>{state.uploadData.layers.length} layers</p>
+                      <p className="truncate">{state.filename}</p>
+                      {state.fileSize && (
+                        <p>{(state.fileSize / 1e6).toFixed(1)} MB</p>
+                      )}
                     </>
                   )}
                 </div>
