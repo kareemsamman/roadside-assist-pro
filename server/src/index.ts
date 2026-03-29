@@ -39,6 +39,12 @@ app.listen(config.server.port, () => {
   console.log(`[Server] Running on http://localhost:${config.server.port}`);
   console.log(`[Server] CORS origin: ${config.server.corsOrigin}`);
   console.log(
-    `[Server] APS Activity: ${config.aps.activityId || "(not configured — run npm run setup-da)"}`
+    `[Server] Extract activity: ${config.aps.extractActivityId || "(not configured)"}`
   );
+  console.log(
+    `[Server] Generate activity: ${config.aps.generateActivityId || "(not configured)"}`
+  );
+  if (!config.aps.extractActivityId || !config.aps.generateActivityId) {
+    console.log(`[Server] Run "npm run setup-da" to create DA activities.`);
+  }
 });

@@ -13,7 +13,8 @@ export const config = {
     clientId: required("APS_CLIENT_ID"),
     clientSecret: required("APS_CLIENT_SECRET"),
     bucketKey: process.env.APS_BUCKET_KEY || "roadside-assist-pro",
-    activityId: process.env.APS_ACTIVITY_ID || "",
+    extractActivityId: process.env.APS_EXTRACT_ACTIVITY_ID || "",
+    generateActivityId: process.env.APS_GENERATE_ACTIVITY_ID || "",
   },
   server: {
     port: parseInt(process.env.PORT || "3001", 10),

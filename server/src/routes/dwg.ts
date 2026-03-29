@@ -4,12 +4,22 @@ import path from "node:path";
 import fs from "node:fs";
 import { v4 as uuidv4 } from "uuid";
 import { config } from "../config.js";
-import { ensureBucket, uploadObject, downloadObject } from "../services/aps-oss.js";
 import {
-  createWorkItem,
+  ensureBucket,
+  uploadObject,
+  downloadObject,
+} from "../services/aps-oss.js";
+import {
+  createExtractWorkItem,
+  createGenerateWorkItem,
   waitForWorkItem,
   getWorkItemStatus,
 } from "../services/aps-da.js";
+import {
+  generateExtractionScript,
+  parseExtractedGeometry,
+  selectRoadEdge,
+} from "../services/geometry-extractor.js";
 import { computeBaysAndScript } from "../services/parking-engine.js";
 import type { Job, GenerateRequest, ParkingRules } from "../types.js";
 
@@ -18,7 +28,7 @@ const router = Router();
 // In-memory job store (production would use a database)
 const jobs = new Map<string, Job>();
 
-// File upload config — store in server/uploads/
+// File upload config
 const uploadsDir = path.resolve(process.cwd(), "uploads");
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
@@ -31,7 +41,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB
+  limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     if (ext !== ".dwg") {
@@ -41,11 +51,10 @@ const upload = multer({
   },
 });
 
-/**
- * POST /upload
- * Upload a DWG file. Stores it locally and uploads to APS OSS.
- * Returns a fileId for subsequent operations.
- */
+// ─────────────────────────────────────────────────────────────
+// POST /upload
+// ─────────────────────────────────────────────────────────────
+
 router.post("/upload", upload.single("file"), async (req, res, next) => {
   try {
     if (!req.file) {
@@ -53,14 +62,18 @@ router.post("/upload", upload.single("file"), async (req, res, next) => {
       return;
     }
 
-    const fileId = path.basename(req.file.filename, path.extname(req.file.filename));
+    const fileId = path.basename(
+      req.file.filename,
+      path.extname(req.file.filename)
+    );
     const objectKey = `input-${fileId}.dwg`;
 
-    // Upload to APS Object Storage
     await ensureBucket();
     await uploadObject(objectKey, req.file.path);
 
-    console.log(`[Upload] File ${req.file.originalname} → OSS key: ${objectKey}`);
+    console.log(
+      `[Upload] ${req.file.originalname} → OSS key: ${objectKey}`
+    );
 
     res.json({
       fileId,
@@ -73,15 +86,10 @@ router.post("/upload", upload.single("file"), async (req, res, next) => {
   }
 });
 
-/**
- * POST /generate
- * Start the DWG processing pipeline:
- * 1. Generate parking bay geometry from rules
- * 2. Create an AutoCAD script with drawing commands
- * 3. Upload the script to APS OSS
- * 4. Submit a Design Automation work item
- * 5. Return a jobId for polling
- */
+// ─────────────────────────────────────────────────────────────
+// POST /generate
+// ─────────────────────────────────────────────────────────────
+
 router.post("/generate", async (req, res, next) => {
   try {
     const { fileId, rules } = req.body as GenerateRequest;
@@ -91,12 +99,25 @@ router.post("/generate", async (req, res, next) => {
       return;
     }
 
+    if (!config.aps.extractActivityId) {
+      res.status(500).json({
+        error:
+          "APS_EXTRACT_ACTIVITY_ID not configured. Run: npm run setup-da",
+      });
+      return;
+    }
+    if (!config.aps.generateActivityId) {
+      res.status(500).json({
+        error:
+          "APS_GENERATE_ACTIVITY_ID not configured. Run: npm run setup-da",
+      });
+      return;
+    }
+
     const jobId = uuidv4();
     const inputObjectKey = `input-${fileId}.dwg`;
-    const scriptObjectKey = `script-${jobId}.scr`;
     const outputObjectKey = `output-${jobId}.dwg`;
 
-    // Create job record
     const job: Job = {
       id: jobId,
       status: "pending",
@@ -109,11 +130,11 @@ router.post("/generate", async (req, res, next) => {
     };
     jobs.set(jobId, job);
 
-    // Return immediately with jobId — processing happens asynchronously
+    // Return immediately — processing is async
     res.json({ jobId });
 
-    // --- Async processing pipeline ---
-    processJob(job, scriptObjectKey, rules).catch((err) => {
+    // Launch the 2-phase pipeline
+    processJob(job, rules).catch((err) => {
       console.error(`[Job ${jobId}] Failed:`, err.message);
       job.status = "failed";
       job.error = err.message;
@@ -124,11 +145,10 @@ router.post("/generate", async (req, res, next) => {
   }
 });
 
-/**
- * GET /download/:jobId
- * Check job status. If complete, returns the DWG file for download.
- * If still processing, returns status JSON.
- */
+// ─────────────────────────────────────────────────────────────
+// GET /download/:jobId
+// ─────────────────────────────────────────────────────────────
+
 router.get("/download/:jobId", async (req, res, next) => {
   try {
     const { jobId } = req.params;
@@ -139,40 +159,32 @@ router.get("/download/:jobId", async (req, res, next) => {
       return;
     }
 
-    // If the work item is still in progress, poll APS for latest status
-    if (
-      job.status === "processing" &&
-      job.workItemId
-    ) {
+    // Live-update from the generate work item if still processing
+    if (job.status === "processing" && job.generateWorkItemId) {
       try {
-        const wiStatus = await getWorkItemStatus(job.workItemId);
+        const wiStatus = await getWorkItemStatus(job.generateWorkItemId);
         if (wiStatus.status === "success") {
           job.status = "complete";
           job.progress = 100;
           job.updatedAt = new Date();
 
-          // Download the output DWG from OSS to local storage
           const outputPath = path.join(uploadsDir, `output-${jobId}.dwg`);
           await downloadObject(job.outputObjectKey, outputPath);
           job.outputFilePath = outputPath;
-        } else if (
-          wiStatus.status === "failedDownload" ||
-          wiStatus.status === "failedInstructions" ||
-          wiStatus.status === "failedUpload" ||
-          wiStatus.status === "cancelled"
-        ) {
+        } else if (isFailedStatus(wiStatus.status)) {
           job.status = "failed";
           job.error = `AutoCAD processing failed: ${wiStatus.status}`;
           job.updatedAt = new Date();
         } else {
-          job.progress = parseInt(wiStatus.progress, 10) || job.progress;
+          job.progress =
+            60 + Math.round((parseInt(wiStatus.progress, 10) || 0) * 0.35);
         }
       } catch {
-        // Status check failed — return current known state
+        // Poll failed — return current known state
       }
     }
 
-    // If complete, serve the file
+    // Serve file if complete
     if (job.status === "complete" && job.outputFilePath) {
       if (!fs.existsSync(job.outputFilePath)) {
         res.status(500).json({ error: "Output file not found on server" });
@@ -180,7 +192,10 @@ router.get("/download/:jobId", async (req, res, next) => {
       }
 
       const filename = `parking-output-${jobId.slice(0, 8)}.dwg`;
-      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${filename}"`
+      );
       res.setHeader("Content-Type", "application/octet-stream");
       res.sendFile(job.outputFilePath);
       return;
@@ -198,73 +213,137 @@ router.get("/download/:jobId", async (req, res, next) => {
   }
 });
 
-/**
- * Run the full processing pipeline for a job.
- */
-async function processJob(
-  job: Job,
-  scriptObjectKey: string,
-  rules: ParkingRules
-): Promise<void> {
-  // Step 1: Generate AutoCAD script from parking rules
-  job.status = "uploading";
+// ─────────────────────────────────────────────────────────────
+// Two-phase processing pipeline
+// ─────────────────────────────────────────────────────────────
+
+async function processJob(job: Job, rules: ParkingRules): Promise<void> {
+  // ── Phase 1: Extract real geometry from the DWG ──────────
+
+  job.status = "extracting";
+  job.progress = 5;
+  job.updatedAt = new Date();
+
+  console.log(`[Job ${job.id}] Phase 1: Extracting geometry from DWG...`);
+
+  // Generate the LISP extraction script
+  const extractScriptContent = generateExtractionScript();
+  const extractScriptKey = `extract-script-${job.id}.scr`;
+  const extractScriptPath = path.join(uploadsDir, extractScriptKey);
+  fs.writeFileSync(extractScriptPath, extractScriptContent, "utf-8");
+
+  // Upload extraction script to OSS
+  await uploadObject(extractScriptKey, extractScriptPath);
+  fs.unlinkSync(extractScriptPath);
+
   job.progress = 10;
   job.updatedAt = new Date();
 
-  // We need edge geometry from the DWG. For the Design Automation workflow,
-  // the parking engine generates the script with bay placement commands.
-  // Edge points are derived from a default road edge assumption or from
-  // a prior analysis step. Here we generate the script with the rules.
-  const { script } = computeBaysAndScript(
-    // Default edge: straight line (the actual edge comes from the DWG,
-    // processed by the AutoCAD script which reads existing geometry)
-    generateDefaultEdge(),
-    rules
-  );
-
-  // Step 2: Upload the script to OSS
-  const scriptPath = path.join(uploadsDir, `script-${job.id}.scr`);
-  fs.writeFileSync(scriptPath, script, "utf-8");
-  await uploadObject(scriptObjectKey, scriptPath);
-  fs.unlinkSync(scriptPath); // cleanup local script file
-
-  job.progress = 30;
-  job.updatedAt = new Date();
-
-  // Step 3: Submit Design Automation work item
-  job.status = "processing";
-  const activityId = config.aps.activityId;
-
-  if (!activityId) {
-    throw new Error(
-      "APS_ACTIVITY_ID not configured. Run `npm run setup-da` to create the Design Automation activity."
-    );
-  }
-
-  const workItemId = await createWorkItem(
+  // Submit extraction work item
+  const extractOutputKey = `extracted-${job.id}.json`;
+  const extractWorkItemId = await createExtractWorkItem(
     job.sourceObjectKey,
-    scriptObjectKey,
-    job.outputObjectKey,
-    activityId
+    extractScriptKey,
+    extractOutputKey,
+    config.aps.extractActivityId
   );
 
-  job.workItemId = workItemId;
-  job.progress = 40;
+  job.extractWorkItemId = extractWorkItemId;
+  job.progress = 15;
   job.updatedAt = new Date();
 
-  console.log(`[Job ${job.id}] Work item submitted: ${workItemId}`);
+  console.log(
+    `[Job ${job.id}] Extract work item submitted: ${extractWorkItemId}`
+  );
 
-  // Step 4: Wait for completion
-  await waitForWorkItem(workItemId, (status) => {
+  // Wait for extraction to complete
+  await waitForWorkItem(extractWorkItemId, (status) => {
     const pct = parseInt(status.progress, 10);
     if (!isNaN(pct)) {
-      job.progress = 40 + Math.round(pct * 0.5); // 40-90% range
+      job.progress = 15 + Math.round(pct * 0.25); // 15–40%
     }
     job.updatedAt = new Date();
   });
 
-  // Step 5: Download result
-  job.progress = 95;
+  // Download the extracted JSON
+  const extractedJsonPath = path.join(uploadsDir, `extracted-${job.id}.json`);
+  await downloadObject(extractOutputKey, extractedJsonPath);
+
+  const jsonContent = fs.readFileSync(extractedJsonPath, "utf-8");
+  fs.unlinkSync(extractedJsonPath);
+
+  job.progress = 45;
+  job.updatedAt = new Date();
+
+  console.log(`[Job ${job.id}] Extraction complete. Parsing geometry...`);
+
+  // ── Phase 2: Compute bays from real geometry + draw ──────
+
+  job.status = "computing";
+  job.progress = 48;
+  job.updatedAt = new Date();
+
+  // Parse extracted geometry and select the road edge
+  const geometry = parseExtractedGeometry(jsonContent);
+  const { polyline: selectedEdge, edgePoints } = selectRoadEdge(geometry);
+
+  console.log(
+    `[Job ${job.id}] Selected edge: layer="${selectedEdge.layer}" ` +
+    `with ${edgePoints.length} points`
+  );
+
+  // Compute parking bays using the REAL edge geometry
+  const { bays, script: drawScript } = computeBaysAndScript(
+    edgePoints,
+    rules
+  );
+
+  console.log(
+    `[Job ${job.id}] Computed ${bays.length} parking bays. ` +
+    `Submitting drawing work item...`
+  );
+
+  job.progress = 55;
+  job.updatedAt = new Date();
+
+  // Upload the drawing script to OSS
+  const drawScriptKey = `draw-script-${job.id}.scr`;
+  const drawScriptPath = path.join(uploadsDir, drawScriptKey);
+  fs.writeFileSync(drawScriptPath, drawScript, "utf-8");
+  await uploadObject(drawScriptKey, drawScriptPath);
+  fs.unlinkSync(drawScriptPath);
+
+  // Submit the generate work item
+  job.status = "processing";
+  job.progress = 60;
+  job.updatedAt = new Date();
+
+  const generateWorkItemId = await createGenerateWorkItem(
+    job.sourceObjectKey,
+    drawScriptKey,
+    job.outputObjectKey,
+    config.aps.generateActivityId
+  );
+
+  job.generateWorkItemId = generateWorkItemId;
+  job.progress = 65;
+  job.updatedAt = new Date();
+
+  console.log(
+    `[Job ${job.id}] Generate work item submitted: ${generateWorkItemId}`
+  );
+
+  // Wait for the drawing to complete
+  await waitForWorkItem(generateWorkItemId, (status) => {
+    const pct = parseInt(status.progress, 10);
+    if (!isNaN(pct)) {
+      job.progress = 65 + Math.round(pct * 0.3); // 65–95%
+    }
+    job.updatedAt = new Date();
+  });
+
+  // Download the final output DWG
+  job.progress = 96;
   job.updatedAt = new Date();
 
   const outputPath = path.join(uploadsDir, `output-${job.id}.dwg`);
@@ -275,20 +354,16 @@ async function processJob(
   job.progress = 100;
   job.updatedAt = new Date();
 
-  console.log(`[Job ${job.id}] Complete — output: ${outputPath}`);
+  console.log(`[Job ${job.id}] Complete — ${bays.length} bays → ${outputPath}`);
 }
 
-/**
- * Generate a default straight edge for script generation.
- * In a full implementation, this would be extracted from the uploaded DWG
- * via a preliminary Design Automation analysis step.
- */
-function generateDefaultEdge() {
-  const points = [];
-  for (let i = 0; i <= 20; i++) {
-    points.push({ x: i * 5, y: 0 });
-  }
-  return points;
+function isFailedStatus(status: string): boolean {
+  return (
+    status === "failedDownload" ||
+    status === "failedInstructions" ||
+    status === "failedUpload" ||
+    status === "cancelled"
+  );
 }
 
 export default router;

@@ -21,42 +21,35 @@ interface WorkItemResult {
   reportUrl?: string;
 }
 
+// ==================== Activity Management ====================
+
+interface ActivityParams {
+  [key: string]: {
+    verb: "get" | "put";
+    description: string;
+    localName: string;
+  };
+}
+
 /**
- * Create an Activity for AutoCAD Design Automation.
- * This only needs to run once during setup.
+ * Register a Design Automation activity.
+ * Handles 409 (already exists) by updating.
  */
-export async function createActivity(
+async function registerActivity(
   activityId: string,
-  description: string
+  description: string,
+  commandLine: string,
+  parameters: ActivityParams
 ): Promise<void> {
   const token = await getAccessToken();
-
   const nickname = await getNickname();
 
   const payload = {
     id: activityId,
     description,
-    commandLine: [
-      '$(engine.path)\\accoreconsole.exe /i "$(args[InputDwg].path)" /s "$(args[Script].path)"',
-    ],
+    commandLine: [commandLine],
     engine: "Autodesk.AutoCAD+24.1",
-    parameters: {
-      InputDwg: {
-        verb: "get",
-        description: "Input DWG file",
-        localName: "input.dwg",
-      },
-      Script: {
-        verb: "get",
-        description: "AutoCAD script file with drawing commands",
-        localName: "commands.scr",
-      },
-      OutputDwg: {
-        verb: "put",
-        description: "Output DWG file",
-        localName: "output.dwg",
-      },
-    },
+    parameters,
   };
 
   try {
@@ -68,7 +61,6 @@ export async function createActivity(
     });
   } catch (err: any) {
     if (err.response?.status === 409) {
-      // Activity already exists, update it
       await axios.patch(
         `${DA_BASE}/activities/${nickname}.${activityId}+prod`,
         payload,
@@ -115,6 +107,73 @@ export async function createActivity(
 }
 
 /**
+ * Create the geometry extraction activity.
+ * Runs an AutoLISP script that reads all polylines from the DWG
+ * and writes their coordinates to a JSON file.
+ */
+export async function createExtractActivity(
+  activityId: string,
+  description: string
+): Promise<void> {
+  await registerActivity(
+    activityId,
+    description,
+    '$(engine.path)\\accoreconsole.exe /i "$(args[InputDwg].path)" /s "$(args[Script].path)"',
+    {
+      InputDwg: {
+        verb: "get",
+        description: "Input DWG file to extract geometry from",
+        localName: "input.dwg",
+      },
+      Script: {
+        verb: "get",
+        description: "AutoLISP extraction script (.scr)",
+        localName: "extract.scr",
+      },
+      OutputJson: {
+        verb: "put",
+        description: "Extracted polyline geometry as JSON",
+        localName: "extracted.json",
+      },
+    }
+  );
+}
+
+/**
+ * Create the parking bay generation activity.
+ * Runs an AutoCAD script that draws parking bays onto the DWG.
+ */
+export async function createGenerateActivity(
+  activityId: string,
+  description: string
+): Promise<void> {
+  await registerActivity(
+    activityId,
+    description,
+    '$(engine.path)\\accoreconsole.exe /i "$(args[InputDwg].path)" /s "$(args[Script].path)"',
+    {
+      InputDwg: {
+        verb: "get",
+        description: "Input DWG file",
+        localName: "input.dwg",
+      },
+      Script: {
+        verb: "get",
+        description: "AutoCAD script with parking bay drawing commands",
+        localName: "commands.scr",
+      },
+      OutputDwg: {
+        verb: "put",
+        description: "Output DWG file with parking bays",
+        localName: "output.dwg",
+      },
+    }
+  );
+}
+
+// ==================== Nickname ====================
+
+/**
  * Get the APS account nickname (used as activity owner prefix).
  */
 export async function getNickname(): Promise<string> {
@@ -125,11 +184,48 @@ export async function getNickname(): Promise<string> {
   return response.data.nickname || response.data.id || config.aps.clientId;
 }
 
+// ==================== Work Items ====================
+
 /**
- * Submit a Design Automation work item.
- * Runs the AutoCAD engine with the input DWG and script, produces output DWG.
+ * Submit an extraction work item.
+ * Runs the LISP extraction script on the DWG and produces a JSON output.
  */
-export async function createWorkItem(
+export async function createExtractWorkItem(
+  inputObjectKey: string,
+  scriptObjectKey: string,
+  outputJsonObjectKey: string,
+  activityId: string
+): Promise<string> {
+  const token = await getAccessToken();
+
+  const inputUrl = await getSignedDownloadUrl(inputObjectKey);
+  const scriptUrl = await getSignedDownloadUrl(scriptObjectKey);
+  const { url: outputUrl } = await getSignedUploadUrl(outputJsonObjectKey);
+
+  const payload = {
+    activityId,
+    arguments: {
+      InputDwg: { url: inputUrl, verb: "get" },
+      Script: { url: scriptUrl, verb: "get" },
+      OutputJson: { url: outputUrl, verb: "put" },
+    },
+  };
+
+  const response = await axios.post(`${DA_BASE}/workitems`, payload, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  return response.data.id;
+}
+
+/**
+ * Submit a generation work item.
+ * Runs the parking drawing script on the DWG and produces the output DWG.
+ */
+export async function createGenerateWorkItem(
   inputObjectKey: string,
   scriptObjectKey: string,
   outputObjectKey: string,
@@ -144,18 +240,9 @@ export async function createWorkItem(
   const payload = {
     activityId,
     arguments: {
-      InputDwg: {
-        url: inputUrl,
-        verb: "get",
-      },
-      Script: {
-        url: scriptUrl,
-        verb: "get",
-      },
-      OutputDwg: {
-        url: outputUrl,
-        verb: "put",
-      },
+      InputDwg: { url: inputUrl, verb: "get" },
+      Script: { url: scriptUrl, verb: "get" },
+      OutputDwg: { url: outputUrl, verb: "put" },
     },
   };
 
@@ -191,7 +278,6 @@ export async function getWorkItemStatus(
 
 /**
  * Poll a work item until it completes or fails.
- * Returns the final status.
  */
 export async function waitForWorkItem(
   workItemId: string,
@@ -213,11 +299,10 @@ export async function waitForWorkItem(
       result.status === "cancelled"
     ) {
       throw new Error(
-        `Work item ${workItemId} failed with status: ${result.status}. Report: ${result.reportUrl || "N/A"}`
+        `Work item ${workItemId} failed: ${result.status}. Report: ${result.reportUrl || "N/A"}`
       );
     }
 
-    // Poll every 3 seconds
     await new Promise((r) => setTimeout(r, 3000));
   }
 

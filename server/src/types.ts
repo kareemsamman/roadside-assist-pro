@@ -29,7 +29,29 @@ export interface ParkingBay {
   stationOffset: number;
 }
 
-export type JobStatus = "pending" | "uploading" | "processing" | "complete" | "failed";
+// ==================== Extracted DWG Geometry ====================
+
+export interface ExtractedPolyline {
+  id: string;
+  layer: string;
+  closed: boolean;
+  points: Point2D[];
+}
+
+export interface ExtractedGeometry {
+  polylines: ExtractedPolyline[];
+}
+
+// ==================== Job Tracking ====================
+
+export type JobStatus =
+  | "pending"
+  | "uploading"
+  | "extracting"
+  | "computing"
+  | "processing"
+  | "complete"
+  | "failed";
 
 export interface Job {
   id: string;
@@ -38,7 +60,8 @@ export interface Job {
   sourceObjectKey: string;
   outputObjectKey: string;
   outputFilePath?: string;
-  workItemId?: string;
+  extractWorkItemId?: string;
+  generateWorkItemId?: string;
   error?: string;
   rules?: ParkingRules;
   createdAt: Date;

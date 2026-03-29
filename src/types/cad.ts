@@ -47,7 +47,7 @@ export interface GenerateResponse {
   jobId: string;
 }
 
-export type JobStatus = "pending" | "uploading" | "processing" | "complete" | "failed";
+export type JobStatus = "pending" | "uploading" | "extracting" | "computing" | "processing" | "complete" | "failed";
 
 export interface DownloadStatus {
   status: JobStatus;

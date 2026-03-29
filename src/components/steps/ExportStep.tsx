@@ -80,7 +80,9 @@ export function ExportStep() {
   const statusLabel: Record<string, string> = {
     pending: "Queued",
     uploading: "Uploading to Autodesk...",
-    processing: "AutoCAD is processing your drawing...",
+    extracting: "Extracting road geometry from DWG...",
+    computing: "Computing parking bay positions...",
+    processing: "AutoCAD is drawing parking bays...",
     complete: "Processing complete",
     failed: "Processing failed",
   };
