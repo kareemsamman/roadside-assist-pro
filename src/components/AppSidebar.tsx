@@ -32,7 +32,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
-        <SidebarGroup defaultOpen>
+        <SidebarGroup>
           <SidebarGroupLabel className="text-xs uppercase tracking-wider">
             {!collapsed && "Workflow"}
           </SidebarGroupLabel>
