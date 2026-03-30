@@ -53,13 +53,20 @@ export async function getDownloadStatus(jobId: string): Promise<DownloadStatus |
     throw new Error(body?.error || `Status check failed: ${res.statusText}`);
   }
 
-  // If the response is a file download (octet-stream), return "file"
+  // Detect file download: check Content-Disposition (res.download() always sets this)
+  // and Content-Type (DWG files may come as application/acad, application/octet-stream, etc.)
   const contentType = res.headers.get("Content-Type") || "";
-  if (contentType.includes("octet-stream")) {
+  const contentDisposition = res.headers.get("Content-Disposition") || "";
+  const isFileDownload =
+    contentDisposition.includes("attachment") ||
+    contentType.includes("octet-stream") ||
+    contentType.includes("acad") ||
+    contentType.includes("dwg");
+
+  if (isFileDownload) {
     // Trigger browser download
     const blob = await res.blob();
-    const disposition = res.headers.get("Content-Disposition") || "";
-    const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
+    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
     const filename = filenameMatch?.[1] || `parking-output-${jobId.slice(0, 8)}.dwg`;
 
     const url = URL.createObjectURL(blob);
@@ -81,7 +88,7 @@ export async function getDownloadStatus(jobId: string): Promise<DownloadStatus |
     status: data.status === "completed" ? "complete" : (data.status ?? "processing"),
     progress: data.progress ?? 0,
     error: data.error,
-    ready: data.ready ?? data.status === "completed" ?? false,
+    ready: data.ready ?? (data.status === "completed"),
   } as DownloadStatus;
 }
 

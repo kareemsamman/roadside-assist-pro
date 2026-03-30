@@ -128,55 +128,89 @@ export function UploadStep() {
       )}
 
       {state.fileId && (
-        <Card className="border-emerald-500/30 bg-emerald-500/5">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileCheck className="h-4 w-4 text-emerald-500" />
-              File Uploaded Successfully
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div className="flex items-start gap-2">
-                <Layers className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-muted-foreground text-xs">Filename</p>
-                  <p className="font-mono truncate">{state.filename}</p>
+        <>
+          {/* File Preview Area */}
+          <Card>
+            <CardContent className="p-0">
+              <div className="flex flex-col items-center justify-center min-h-[200px] bg-muted/30 rounded-lg border border-dashed border-border">
+                <div className="relative mb-3">
+                  <svg
+                    width="64"
+                    height="64"
+                    viewBox="0 0 64 64"
+                    fill="none"
+                    className="text-primary"
+                  >
+                    <rect x="4" y="4" width="56" height="56" rx="4" stroke="currentColor" strokeWidth="1.5" fill="none" />
+                    <line x1="4" y1="16" x2="60" y2="16" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
+                    <line x1="4" y1="28" x2="60" y2="28" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
+                    <line x1="4" y1="40" x2="60" y2="40" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
+                    <line x1="4" y1="52" x2="60" y2="52" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
+                    <line x1="16" y1="4" x2="16" y2="60" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
+                    <line x1="28" y1="4" x2="28" y2="60" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
+                    <line x1="40" y1="4" x2="40" y2="60" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
+                    <line x1="52" y1="4" x2="52" y2="60" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
+                    <path d="M12 48 L20 32 L32 44 L44 24 L52 36" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <rect x="18" y="20" width="12" height="8" rx="1" stroke="currentColor" strokeWidth="1" fill="none" opacity="0.6" />
+                    <rect x="36" y="38" width="16" height="10" rx="1" stroke="currentColor" strokeWidth="1" fill="none" opacity="0.6" />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-foreground">{state.filename}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  DWG preview requires AutoCAD — file will be processed in the Generate step
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* File Details */}
+          <Card className="border-emerald-500/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 text-emerald-400">
+                <FileCheck className="h-4 w-4" />
+                File Uploaded Successfully
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="flex items-start gap-2">
+                  <Layers className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-muted-foreground text-xs">Filename</p>
+                    <p className="font-mono truncate text-foreground">{state.filename}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <HardDrive className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-muted-foreground text-xs">Size</p>
+                    <p className="font-mono text-foreground">
+                      {state.fileSize
+                        ? state.fileSize > 1e6
+                          ? `${(state.fileSize / 1e6).toFixed(2)} MB`
+                          : `${(state.fileSize / 1e3).toFixed(1)} KB`
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Hash className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-muted-foreground text-xs">File ID</p>
+                    <p className="font-mono truncate text-foreground">{state.fileId.slice(0, 12)}...</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <FileUp className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-muted-foreground text-xs">Format</p>
+                    <p className="font-mono uppercase text-foreground">AutoCAD DWG</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-start gap-2">
-                <HardDrive className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-muted-foreground text-xs">Size</p>
-                  <p className="font-mono">
-                    {state.fileSize
-                      ? state.fileSize > 1e6
-                        ? `${(state.fileSize / 1e6).toFixed(2)} MB`
-                        : `${(state.fileSize / 1e3).toFixed(1)} KB`
-                      : "—"}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <Hash className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-muted-foreground text-xs">File ID</p>
-                  <p className="font-mono truncate">{state.fileId.slice(0, 12)}...</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <FileUp className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-muted-foreground text-xs">Format</p>
-                  <p className="font-mono uppercase">AutoCAD DWG</p>
-                </div>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-3">
-              DWG preview is not available in the browser. Continue to configure parking rules, then the file will be processed by AutoCAD.
-            </p>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {uploadProgress === "done" && (
