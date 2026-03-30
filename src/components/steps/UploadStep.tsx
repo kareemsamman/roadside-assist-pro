@@ -13,8 +13,8 @@ export function UploadStep() {
   const handleFile = useCallback(
     async (file: File) => {
       const ext = file.name.split(".").pop()?.toLowerCase();
-      if (ext !== "dwg") {
-        dispatch({ type: "SET_ERROR", error: "Only DWG files are supported." });
+      if (ext !== "dwg" && ext !== "dxf") {
+        dispatch({ type: "SET_ERROR", error: "Only DWG and DXF files are supported." });
         return;
       }
 
@@ -89,7 +89,7 @@ export function UploadStep() {
             <input
               id="cad-file-input"
               type="file"
-              accept=".dwg"
+              accept=".dwg,.dxf"
               className="hidden"
               onChange={handleInputChange}
               disabled={uploadProgress !== "idle" && uploadProgress !== "done"}
@@ -98,7 +98,7 @@ export function UploadStep() {
             {uploadProgress === "idle" && (
               <>
                 <FileUp className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-lg font-medium">Drop DWG file here</p>
+                <p className="text-lg font-medium">Drop DWG or DXF file here</p>
                 <p className="text-sm text-muted-foreground mt-1">or click to browse</p>
               </>
             )}

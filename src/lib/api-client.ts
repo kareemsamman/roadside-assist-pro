@@ -6,7 +6,9 @@ import type {
 } from "@/types/cad";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "http://localhost:3001";
+  import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "https://api.kareemsamman.com";
+
+console.log("[api-client] Using API_BASE_URL:", API_BASE_URL);
 
 export async function uploadDWGFile(file: File): Promise<UploadResponse> {
   const formData = new FormData();
@@ -19,7 +21,7 @@ export async function uploadDWGFile(file: File): Promise<UploadResponse> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.error || `Upload failed: ${res.statusText}`);
+    throw new Error(body?.error || `Upload failed (${API_BASE_URL}/upload): ${res.statusText}`);
   }
 
   return res.json();
