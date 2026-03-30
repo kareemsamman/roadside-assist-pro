@@ -95,3 +95,17 @@ export async function getDownloadStatus(jobId: string): Promise<DownloadStatus |
 export function getDownloadUrl(jobId: string): string {
   return `${API_BASE_URL}/download/${jobId}`;
 }
+
+// ─── Viewer APIs ───────────────────────────────────────
+
+export async function getViewerToken(): Promise<{ access_token: string; expires_in: number }> {
+  const res = await fetch(`${API_BASE_URL}/api/viewer/token`);
+  if (!res.ok) throw new Error("Failed to get viewer token");
+  return res.json();
+}
+
+export async function getTranslationStatus(urn: string): Promise<{ status: string; progress: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/viewer/status/${urn}`);
+  if (!res.ok) throw new Error("Failed to check translation status");
+  return res.json();
+}

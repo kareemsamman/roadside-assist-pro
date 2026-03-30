@@ -36,6 +36,7 @@ export interface UploadResponse {
   filename: string;
   fileSize: number;
   objectKey: string;
+  urn?: string;
 }
 
 export interface GenerateRequest {
@@ -65,6 +66,7 @@ export interface WorkflowState {
   fileId: string | null;
   filename: string | null;
   fileSize: number | null;
+  viewerUrn: string | null;
   parkingRules: ParkingRules;
   jobId: string | null;
   jobStatus: JobStatus | null;

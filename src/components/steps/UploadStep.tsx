@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useWorkflow } from "@/context/WorkflowContext";
 import { uploadDWGFile } from "@/lib/api-client";
+import { DwgViewer } from "@/components/DwgViewer";
 
 export function UploadStep() {
   const { state, dispatch, goToStep } = useWorkflow();
@@ -28,6 +29,7 @@ export function UploadStep() {
           fileId: result.fileId,
           filename: result.filename,
           fileSize: result.fileSize,
+          viewerUrn: result.urn,
         });
 
         setUploadProgress("done");
@@ -129,37 +131,24 @@ export function UploadStep() {
 
       {state.fileId && (
         <>
-          {/* File Preview Area */}
+          {/* DWG Viewer */}
           <Card>
-            <CardContent className="p-0">
-              <div className="flex flex-col items-center justify-center min-h-[200px] bg-muted/30 rounded-lg border border-dashed border-border">
-                <div className="relative mb-3">
-                  <svg
-                    width="64"
-                    height="64"
-                    viewBox="0 0 64 64"
-                    fill="none"
-                    className="text-primary"
-                  >
-                    <rect x="4" y="4" width="56" height="56" rx="4" stroke="currentColor" strokeWidth="1.5" fill="none" />
-                    <line x1="4" y1="16" x2="60" y2="16" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
-                    <line x1="4" y1="28" x2="60" y2="28" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
-                    <line x1="4" y1="40" x2="60" y2="40" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
-                    <line x1="4" y1="52" x2="60" y2="52" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
-                    <line x1="16" y1="4" x2="16" y2="60" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
-                    <line x1="28" y1="4" x2="28" y2="60" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
-                    <line x1="40" y1="4" x2="40" y2="60" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
-                    <line x1="52" y1="4" x2="52" y2="60" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
-                    <path d="M12 48 L20 32 L32 44 L44 24 L52 36" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    <rect x="18" y="20" width="12" height="8" rx="1" stroke="currentColor" strokeWidth="1" fill="none" opacity="0.6" />
-                    <rect x="36" y="38" width="16" height="10" rx="1" stroke="currentColor" strokeWidth="1" fill="none" opacity="0.6" />
-                  </svg>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Drawing Preview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {state.viewerUrn ? (
+                <DwgViewer urn={state.viewerUrn} />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-[300px] bg-muted/30 rounded-lg border border-dashed border-border">
+                  <FileUp className="h-10 w-10 text-muted-foreground mb-3" />
+                  <p className="text-sm text-muted-foreground text-center">
+                    Viewer not available — server did not return a viewer URN.
+                    <br />
+                    Ensure the backend uploads to Autodesk OSS.
+                  </p>
                 </div>
-                <p className="text-sm font-medium text-foreground">{state.filename}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  DWG preview requires AutoCAD — file will be processed in the Generate step
-                </p>
-              </div>
+              )}
             </CardContent>
           </Card>
 

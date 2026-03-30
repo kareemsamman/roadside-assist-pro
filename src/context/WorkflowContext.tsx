@@ -12,6 +12,7 @@ const INITIAL_STATE: WorkflowState = {
   fileId: null,
   filename: null,
   fileSize: null,
+  viewerUrn: null,
   parkingRules: DEFAULT_PARKING_RULES,
   jobId: null,
   jobStatus: null,
@@ -23,7 +24,7 @@ const INITIAL_STATE: WorkflowState = {
 
 type Action =
   | { type: "SET_STEP"; step: WorkflowStep }
-  | { type: "SET_UPLOAD"; fileId: string; filename: string; fileSize: number }
+  | { type: "SET_UPLOAD"; fileId: string; filename: string; fileSize: number; viewerUrn?: string }
   | { type: "SET_PARKING_RULES"; rules: ParkingRules }
   | { type: "SET_JOB"; jobId: string }
   | { type: "SET_JOB_STATUS"; status: JobStatus; progress: number; error?: string }
@@ -41,6 +42,7 @@ function reducer(state: WorkflowState, action: Action): WorkflowState {
         fileId: action.fileId,
         filename: action.filename,
         fileSize: action.fileSize,
+        viewerUrn: action.viewerUrn || null,
         error: null,
       };
     case "SET_PARKING_RULES":
