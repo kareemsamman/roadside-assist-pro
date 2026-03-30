@@ -89,7 +89,7 @@ export function UploadStep() {
             <input
               id="cad-file-input"
               type="file"
-              accept=".dwg"
+              accept=".dwg,.dxf"
               className="hidden"
               onChange={handleInputChange}
               disabled={uploadProgress !== "idle" && uploadProgress !== "done"}
