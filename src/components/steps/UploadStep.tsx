@@ -98,7 +98,7 @@ export function UploadStep() {
             {uploadProgress === "idle" && (
               <>
                 <FileUp className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-lg font-medium">Drop DWG file here</p>
+                <p className="text-lg font-medium">Drop DWG or DXF file here</p>
                 <p className="text-sm text-muted-foreground mt-1">or click to browse</p>
               </>
             )}

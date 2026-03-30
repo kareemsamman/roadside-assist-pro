@@ -21,7 +21,7 @@ export async function uploadDWGFile(file: File): Promise<UploadResponse> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.error || `Upload failed: ${res.statusText}`);
+    throw new Error(body?.error || `Upload failed (${API_BASE_URL}/upload): ${res.statusText}`);
   }
 
   return res.json();
