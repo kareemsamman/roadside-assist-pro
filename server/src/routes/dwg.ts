@@ -62,6 +62,13 @@ router.post("/upload", upload.single("file"), async (req, res, next) => {
       return;
     }
 
+    if (!req.file.path && !req.file.buffer) {
+      res.status(500).json({
+        error: "File was not saved to disk. Check server write permissions and uploads directory.",
+      });
+      return;
+    }
+
     const fileId = path.basename(
       req.file.filename,
       path.extname(req.file.filename)
