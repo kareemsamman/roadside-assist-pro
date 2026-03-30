@@ -74,7 +74,15 @@ export async function getDownloadStatus(jobId: string): Promise<DownloadStatus |
     return "file";
   }
 
-  return res.json();
+  const data = await res.json();
+
+  // Normalize backend response: handle "completed" → "complete", missing fields
+  return {
+    status: data.status === "completed" ? "complete" : (data.status ?? "processing"),
+    progress: data.progress ?? 0,
+    error: data.error,
+    ready: data.ready ?? data.status === "completed" ?? false,
+  } as DownloadStatus;
 }
 
 export function getDownloadUrl(jobId: string): string {

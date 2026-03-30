@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,52 +10,106 @@ import {
   CheckCircle2,
   FileDown,
   RotateCcw,
+  Wifi,
+  WifiOff,
+  Clock,
 } from "lucide-react";
 import { useWorkflow } from "@/context/WorkflowContext";
 import { getDownloadStatus, getDownloadUrl } from "@/lib/api-client";
+
+interface LogEntry {
+  id: number;
+  timestamp: Date;
+  message: string;
+  type: "info" | "success" | "error" | "warning";
+}
+
+let logIdCounter = 0;
 
 export function ExportStep() {
   const { state, dispatch, goToStep } = useWorkflow();
   const { jobId, jobStatus, jobProgress, jobError, filename, parkingRules } = state;
   const [downloadReady, setDownloadReady] = useState(false);
+  const [activityLog, setActivityLog] = useState<LogEntry[]>([]);
+  const [connected, setConnected] = useState(true);
+  const [pollCount, setPollCount] = useState(0);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const logEndRef = useRef<HTMLDivElement>(null);
+  const prevStatusRef = useRef<string | null>(null);
+
+  const addLog = useCallback((message: string, type: LogEntry["type"] = "info") => {
+    setActivityLog((prev) => [
+      ...prev,
+      { id: ++logIdCounter, timestamp: new Date(), message, type },
+    ]);
+  }, []);
+
+  // Auto-scroll log to bottom
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [activityLog]);
 
   // Poll for job status
   useEffect(() => {
     if (!jobId) return;
 
+    addLog(`Job started — ID: ${jobId.slice(0, 12)}...`, "info");
+
     const poll = async () => {
+      setPollCount((c) => c + 1);
+
       try {
         const result = await getDownloadStatus(jobId);
+        setConnected(true);
 
         if (result === "file") {
-          // File was downloaded directly
           dispatch({
             type: "SET_JOB_STATUS",
             status: "complete",
             progress: 100,
           });
           setDownloadReady(true);
+          addLog("File ready — download started", "success");
           if (pollingRef.current) clearInterval(pollingRef.current);
           return;
         }
 
+        const progress = result.progress ?? 0;
+        const status = result.status ?? "processing";
+
+        // Log status transitions
+        if (status !== prevStatusRef.current) {
+          const label = statusLabel[status] || status;
+          if (status === "failed") {
+            addLog(`${label}: ${result.error || "Unknown error"}`, "error");
+          } else if (status === "complete") {
+            addLog(label, "success");
+          } else {
+            addLog(label, "info");
+          }
+          prevStatusRef.current = status;
+        }
+
         dispatch({
           type: "SET_JOB_STATUS",
-          status: result.status,
-          progress: result.progress,
+          status,
+          progress,
           error: result.error,
         });
 
         if (result.ready) {
           setDownloadReady(true);
+          addLog("Output file is ready for download", "success");
           if (pollingRef.current) clearInterval(pollingRef.current);
         }
 
-        if (result.status === "failed") {
+        if (status === "failed") {
           if (pollingRef.current) clearInterval(pollingRef.current);
         }
       } catch (err) {
+        setConnected(false);
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        addLog(`Connection error: ${msg}`, "error");
         console.error("Status poll failed:", err);
       }
     };
@@ -69,6 +123,7 @@ export function ExportStep() {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId, dispatch]);
 
   const handleDownload = () => {
@@ -236,6 +291,65 @@ export function ExportStep() {
           </div>
         </div>
       </div>
+
+      {/* Activity Log */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Activity Log
+            </CardTitle>
+            <div className="flex items-center gap-2 text-xs">
+              {connected ? (
+                <span className="flex items-center gap-1 text-emerald-500">
+                  <Wifi className="h-3.5 w-3.5" />
+                  Connected
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-destructive">
+                  <WifiOff className="h-3.5 w-3.5" />
+                  Disconnected
+                </span>
+              )}
+              <span className="text-muted-foreground">
+                ({pollCount} {pollCount === 1 ? "poll" : "polls"})
+              </span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-muted/50 rounded-md border max-h-48 overflow-y-auto font-mono text-xs">
+            {activityLog.length === 0 ? (
+              <p className="text-muted-foreground p-3">Waiting for activity...</p>
+            ) : (
+              <div className="divide-y divide-border/50">
+                {activityLog.map((entry) => (
+                  <div key={entry.id} className="flex gap-2 px-3 py-1.5">
+                    <span className="text-muted-foreground shrink-0">
+                      {entry.timestamp.toLocaleTimeString()}
+                    </span>
+                    <span
+                      className={
+                        entry.type === "error"
+                          ? "text-destructive"
+                          : entry.type === "success"
+                          ? "text-emerald-500"
+                          : entry.type === "warning"
+                          ? "text-yellow-500"
+                          : "text-foreground"
+                      }
+                    >
+                      {entry.message}
+                    </span>
+                  </div>
+                ))}
+                <div ref={logEndRef} />
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

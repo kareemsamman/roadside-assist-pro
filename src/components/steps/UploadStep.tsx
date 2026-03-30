@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { FileUp, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { FileUp, AlertCircle, CheckCircle2, Loader2, FileCheck, HardDrive, Hash, Layers } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useWorkflow } from "@/context/WorkflowContext";
@@ -128,27 +128,53 @@ export function UploadStep() {
       )}
 
       {state.fileId && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">File Information</CardTitle>
+        <Card className="border-emerald-500/30 bg-emerald-500/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileCheck className="h-4 w-4 text-emerald-500" />
+              File Uploaded Successfully
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Filename</p>
-                <p className="font-mono truncate">{state.filename}</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="flex items-start gap-2">
+                <Layers className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-muted-foreground text-xs">Filename</p>
+                  <p className="font-mono truncate">{state.filename}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-muted-foreground">Size</p>
-                <p className="font-mono">
-                  {state.fileSize ? `${(state.fileSize / 1e6).toFixed(2)} MB` : "—"}
-                </p>
+              <div className="flex items-start gap-2">
+                <HardDrive className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-muted-foreground text-xs">Size</p>
+                  <p className="font-mono">
+                    {state.fileSize
+                      ? state.fileSize > 1e6
+                        ? `${(state.fileSize / 1e6).toFixed(2)} MB`
+                        : `${(state.fileSize / 1e3).toFixed(1)} KB`
+                      : "—"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-muted-foreground">Format</p>
-                <p className="font-mono uppercase">DWG</p>
+              <div className="flex items-start gap-2">
+                <Hash className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-muted-foreground text-xs">File ID</p>
+                  <p className="font-mono truncate">{state.fileId.slice(0, 12)}...</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <FileUp className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-muted-foreground text-xs">Format</p>
+                  <p className="font-mono uppercase">AutoCAD DWG</p>
+                </div>
               </div>
             </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              DWG preview is not available in the browser. Continue to configure parking rules, then the file will be processed by AutoCAD.
+            </p>
           </CardContent>
         </Card>
       )}
