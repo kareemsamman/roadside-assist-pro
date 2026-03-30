@@ -76,7 +76,13 @@ router.post("/upload", upload.single("file"), async (req, res, next) => {
     const objectKey = `input-${fileId}.dwg`;
 
     await ensureBucket();
-    await uploadObject(objectKey, req.file.path);
+
+    // Support both disk storage (req.file.path) and memory storage (req.file.buffer)
+    if (req.file.path) {
+      await uploadObject(objectKey, req.file.path);
+    } else if (req.file.buffer) {
+      await uploadObject(objectKey, req.file.buffer);
+    }
 
     console.log(
       `[Upload] ${req.file.originalname} → OSS key: ${objectKey}`
