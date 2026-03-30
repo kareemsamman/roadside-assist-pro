@@ -6,7 +6,9 @@ import type {
 } from "@/types/cad";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "http://localhost:3001";
+  import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "https://api.kareemsamman.com";
+
+console.log("[api-client] Using API_BASE_URL:", API_BASE_URL);
 
 export async function uploadDWGFile(file: File): Promise<UploadResponse> {
   const formData = new FormData();
