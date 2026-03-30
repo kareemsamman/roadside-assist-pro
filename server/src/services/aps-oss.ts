@@ -43,10 +43,13 @@ export async function ensureBucket(): Promise<void> {
  */
 export async function uploadObject(
   objectKey: string,
-  filePath: string
+  filePathOrBuffer: string | Buffer
 ): Promise<string> {
   const token = await getAccessToken();
-  const fileBuffer = fs.readFileSync(filePath);
+  const fileBuffer =
+    typeof filePathOrBuffer === "string"
+      ? fs.readFileSync(filePathOrBuffer)
+      : filePathOrBuffer;
   const fileSize = fileBuffer.length;
 
   const response = await axios.put(
