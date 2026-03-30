@@ -13,8 +13,8 @@ export function UploadStep() {
   const handleFile = useCallback(
     async (file: File) => {
       const ext = file.name.split(".").pop()?.toLowerCase();
-      if (ext !== "dwg") {
-        dispatch({ type: "SET_ERROR", error: "Only DWG files are supported." });
+      if (ext !== "dwg" && ext !== "dxf") {
+        dispatch({ type: "SET_ERROR", error: "Only DWG and DXF files are supported." });
         return;
       }
 
