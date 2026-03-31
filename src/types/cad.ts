@@ -55,6 +55,7 @@ export interface DownloadStatus {
   progress: number;
   error?: string;
   ready: boolean;
+  outputUrn?: string;
 }
 
 // ==================== Workflow State ====================
