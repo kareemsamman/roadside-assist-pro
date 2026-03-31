@@ -13,6 +13,7 @@ const INITIAL_STATE: WorkflowState = {
   filename: null,
   fileSize: null,
   viewerUrn: null,
+  outputUrn: null,
   parkingRules: DEFAULT_PARKING_RULES,
   jobId: null,
   jobStatus: null,
