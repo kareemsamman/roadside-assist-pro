@@ -28,7 +28,7 @@ type Action =
   | { type: "SET_UPLOAD"; fileId: string; filename: string; fileSize: number; viewerUrn?: string }
   | { type: "SET_PARKING_RULES"; rules: ParkingRules }
   | { type: "SET_JOB"; jobId: string }
-  | { type: "SET_JOB_STATUS"; status: JobStatus; progress: number; error?: string }
+  | { type: "SET_JOB_STATUS"; status: JobStatus; progress: number; error?: string; outputUrn?: string }
   | { type: "SET_LOADING"; loading: boolean }
   | { type: "SET_ERROR"; error: string | null }
   | { type: "RESET" };
