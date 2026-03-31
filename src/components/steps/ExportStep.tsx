@@ -13,9 +13,11 @@ import {
   Wifi,
   WifiOff,
   Clock,
+  ArrowRight,
 } from "lucide-react";
 import { useWorkflow } from "@/context/WorkflowContext";
 import { getDownloadStatus, getDownloadUrl } from "@/lib/api-client";
+import { DwgViewer } from "@/components/DwgViewer";
 
 interface LogEntry {
   id: number;
