@@ -63,6 +63,7 @@ export function ConfigureStep() {
         type: "SET_ERROR",
         error: err instanceof Error ? err.message : "Generation failed",
       });
+      dispatch({ type: "SET_LOADING", loading: false });
     }
     setGenerating(false);
   };
@@ -339,11 +340,17 @@ export function ConfigureStep() {
             </CardContent>
           </Card>
 
+          {state.error && (
+            <div className="rounded-md bg-destructive/10 border border-destructive/30 p-3 flex items-start gap-2">
+              <span className="text-sm text-destructive">{state.error}</span>
+            </div>
+          )}
+
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => goToStep("upload")}>
               Back
             </Button>
-            <Button onClick={handleGenerate} disabled={generating}>
+            <Button onClick={handleGenerate} disabled={generating || state.isLoading}>
               {generating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" /> Submitting...
