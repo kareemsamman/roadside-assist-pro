@@ -13,6 +13,7 @@ const INITIAL_STATE: WorkflowState = {
   filename: null,
   fileSize: null,
   viewerUrn: null,
+  outputUrn: null,
   parkingRules: DEFAULT_PARKING_RULES,
   jobId: null,
   jobStatus: null,
@@ -27,7 +28,7 @@ type Action =
   | { type: "SET_UPLOAD"; fileId: string; filename: string; fileSize: number; viewerUrn?: string }
   | { type: "SET_PARKING_RULES"; rules: ParkingRules }
   | { type: "SET_JOB"; jobId: string }
-  | { type: "SET_JOB_STATUS"; status: JobStatus; progress: number; error?: string }
+  | { type: "SET_JOB_STATUS"; status: JobStatus; progress: number; error?: string; outputUrn?: string }
   | { type: "SET_LOADING"; loading: boolean }
   | { type: "SET_ERROR"; error: string | null }
   | { type: "RESET" };
@@ -61,6 +62,7 @@ function reducer(state: WorkflowState, action: Action): WorkflowState {
         jobStatus: action.status,
         jobProgress: action.progress,
         jobError: action.error || null,
+        outputUrn: action.outputUrn || state.outputUrn,
       };
     case "SET_LOADING":
       return { ...state, isLoading: action.loading };

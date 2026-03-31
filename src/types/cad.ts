@@ -55,6 +55,7 @@ export interface DownloadStatus {
   progress: number;
   error?: string;
   ready: boolean;
+  outputUrn?: string;
 }
 
 // ==================== Workflow State ====================
@@ -67,6 +68,7 @@ export interface WorkflowState {
   filename: string | null;
   fileSize: number | null;
   viewerUrn: string | null;
+  outputUrn: string | null;
   parkingRules: ParkingRules;
   jobId: string | null;
   jobStatus: JobStatus | null;
