@@ -62,6 +62,7 @@ function reducer(state: WorkflowState, action: Action): WorkflowState {
         jobStatus: action.status,
         jobProgress: action.progress,
         jobError: action.error || null,
+        outputUrn: action.outputUrn || state.outputUrn,
       };
     case "SET_LOADING":
       return { ...state, isLoading: action.loading };
