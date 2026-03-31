@@ -30,7 +30,7 @@ let logIdCounter = 0;
 
 export function ExportStep() {
   const { state, dispatch, goToStep } = useWorkflow();
-  const { jobId, jobStatus, jobProgress, jobError, filename, parkingRules } = state;
+  const { jobId, jobStatus, jobProgress, jobError, filename, parkingRules, viewerUrn, outputUrn } = state;
   const [downloadReady, setDownloadReady] = useState(false);
   const [activityLog, setActivityLog] = useState<LogEntry[]>([]);
   const [connected, setConnected] = useState(true);
