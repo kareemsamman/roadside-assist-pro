@@ -83,12 +83,13 @@ export async function getDownloadStatus(jobId: string): Promise<DownloadStatus |
 
   const data = await res.json();
 
-  // Normalize backend response: handle "completed" → "complete", missing fields
+  // Normalize backend response
   return {
     status: data.status === "completed" ? "complete" : (data.status ?? "processing"),
     progress: data.progress ?? 0,
     error: data.error,
     ready: data.ready ?? (data.status === "completed"),
+    outputUrn: data.outputUrn,
   } as DownloadStatus;
 }
 
