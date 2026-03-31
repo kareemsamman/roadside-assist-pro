@@ -295,6 +295,59 @@ export function ExportStep() {
         </div>
       </div>
 
+      {/* Before / After DWG Viewer */}
+      {(viewerUrn || outputUrn) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <ArrowRight className="h-4 w-4" />
+              Drawing Preview — Before & After
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Before */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">Before</Badge>
+                  <span className="text-xs text-muted-foreground truncate">{filename}</span>
+                </div>
+                {viewerUrn ? (
+                  <DwgViewer urn={viewerUrn} />
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] bg-muted/30 rounded-lg border border-dashed border-border">
+                    <p className="text-sm text-muted-foreground">Original viewer not available</p>
+                  </div>
+                )}
+              </div>
+
+              {/* After */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge className="text-xs bg-primary">After</Badge>
+                  <span className="text-xs text-muted-foreground">With parking bays</span>
+                </div>
+                {outputUrn ? (
+                  <DwgViewer urn={outputUrn} />
+                ) : jobStatus === "complete" ? (
+                  <div className="flex items-center justify-center h-[300px] bg-muted/30 rounded-lg border border-dashed border-border">
+                    <p className="text-sm text-muted-foreground text-center px-4">
+                      Output viewer not available.<br />
+                      <span className="text-xs">Backend needs to translate the output DWG for viewing.</span>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-[300px] bg-muted/30 rounded-lg border border-dashed border-border">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
+                    <p className="text-sm text-muted-foreground">Processing...</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Activity Log */}
       <Card>
         <CardHeader className="pb-3">
