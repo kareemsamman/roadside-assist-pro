@@ -68,6 +68,7 @@ export interface WorkflowState {
   filename: string | null;
   fileSize: number | null;
   viewerUrn: string | null;
+  outputUrn: string | null;
   parkingRules: ParkingRules;
   jobId: string | null;
   jobStatus: JobStatus | null;
