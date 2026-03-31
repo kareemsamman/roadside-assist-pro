@@ -97,6 +97,7 @@ export function ExportStep() {
           status,
           progress,
           error: result.error,
+          outputUrn: result.outputUrn,
         });
 
         if (result.ready) {
