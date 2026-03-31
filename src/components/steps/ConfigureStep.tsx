@@ -63,6 +63,7 @@ export function ConfigureStep() {
         type: "SET_ERROR",
         error: err instanceof Error ? err.message : "Generation failed",
       });
+      dispatch({ type: "SET_LOADING", loading: false });
     }
     setGenerating(false);
   };
